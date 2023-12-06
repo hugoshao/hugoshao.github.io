@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>事件和BOSS计时器</title>
+    <style>
+        .event-item {
+            margin-bottom: 10px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .event-item.orange {
+            background-color: orange;
+        }
+        .event-item.red {
+            background-color: red;
+        }
+        .event-checkbox {
+            margin-right: 10px;
+        }
+        .event-countdown {
+            margin-left: 10px;
+        }
+        .next-time {
+            margin-left: 10px;
+            font-weight: bold;
+        }
+		.event-item.checked {
+			background-color: lightgreen;
+		}
+
+    </style>
+</head>
+<body>
+    <div id="events"></div>
+
+    <script>
+        // 直接定义事件数据
+        const events = [
+            { id: 1, name: "苍翠夜晚：龙母", clipboardData: "龙母 [&BAgIAAA=]", times: ["00:10", "02:10", "04:10", "06:10", "08:10", "10:10", "12:10", "14:10", "16:10", "18:10", "20:10", "22:10"] },
+            { 
+                id: 2, 
+                name: "魔径异常体", 
+                times: ["00:20", "02:20", "04:20","06:20","08:20","10:20","12:20","14:20","16:20","18:20","20:20","22:20",],
+                timeSpecificData: {
+                    "00:20": "魔径异常体 - 甘达拉战区 [&BOQAAAA=]",
+                    "02:20": "魔径异常体 - 林线瀑布 [&BEwCAAA=]",
+                    "04:20": "魔径异常体 - 钢铁平原 [&BOYBAAA=]",
+                    "06:20": "魔径异常体 - 甘达拉战区 [&BOQAAAA=]",
+                    "08:20": "魔径异常体 - 林线瀑布 [&BEwCAAA=]",
+                    "10:20": "魔径异常体 - 钢铁平原 [&BOYBAAA=]",
+                    "12:20": "魔径异常体 - 甘达拉战区 [&BOQAAAA=]",
+                    "14:20": "魔径异常体 - 林线瀑布 [&BEwCAAA=]",
+                    "16:20": "魔径异常体 - 钢铁平原 [&BOYBAAA=]",
+                    "18:20": "魔径异常体 - 甘达拉战区 [&BOQAAAA=]",
+                    "20:20": "魔径异常体 - 林线瀑布 [&BEwCAAA=]",
+                    "22:20": "魔径异常体 - 钢铁平原 [&BOYBAAA=]",
+                    // ... 其他时间点 ...
+                }
+            },
+            { id: 3, name: "缠藤深渊：查克虫王", clipboardData: "查克虫王 [&BPUHAAA=]", times: ["00:25", "02:25", "04:25", "06:25", "08:25", "10:25", "12:25", "14:25", "16:25", "18:25", "20:25", "22:25"] },
+            { id: 4, name: "赤金盆地：四门", clipboardData: "四门 [&BGwIAAA=]", times: ["00:45", "02:45", "04:45", "06:45", "08:45", "10:45", "12:45", "14:45", "16:45", "18:45", "20:45", "22:45"] },
+            { id: 5, name: "波卓拉边境：德拉克", clipboardData: "德拉克 [&BEUMAAA=]", times: ["01:05", "03:05", "05:05", "07:05", "09:05", "11:05", "13:05", "15:05", "17:05", "19:05", "21:05", "23:05"] },
+            { id: 6, name: "闪萤沼泽：吞噬托", clipboardData: "吞噬托 [&BNABAAA=]", times: ["00:00", "03:00", "08:00", "11:00", "15:00", "19:30"] },
+            { id: 98, name: "波卓拉边境 - 挖冰", clipboardData: "挖冰 [&BCcMAAA=]", times: ["08:00"] },
+            { id: 99, name: "酷寒前线 - 采果子", clipboardData: "采果子 [&BH0JAAA=]", times: ["08:00"] },
+            { id: 100, name: "制作：桑莱电金锭", clipboardData: "桑莱电金锭", times: ["08:00"] },
+            { id: 101, name: "制作：丝绸编织线轴", clipboardData: "丝绸编织线轴", times: ["08:00"] },
+            { id: 102, name: "制作：厚实伊伦娜细线线轴", clipboardData: "厚实伊伦娜细线线轴", times: ["08:00"] },
+            { id: 200, name: "其他：旅者圆石", clipboardData: "https://gw2.wishingstarmoye.com/doc/TheWayfarersHenge", times: ["08:00"] },
+            // 更多事件...
+        ];
+
+        const eventsContainer = document.getElementById('events');
+
+        // 初始化事件列表
+        function initializeEvents() {
+
+            const checkedEvents = new Set(JSON.parse(localStorage.getItem('checkedEvents') || '[]'));
+			
+
+            events.forEach(event => {
+                const eventDiv = document.createElement('div');
+                eventDiv.className = 'event-item';
+                eventDiv.id = `event-${event.id}`;
+
+                const checkbox = document.createElement('input');
+				checkbox.id = `checkbox-${event.id}`;
+                checkbox.type = 'checkbox';
+                checkbox.className = 'event-checkbox';
+                checkbox.checked = checkedEvents.has(event.id);
+                checkbox.addEventListener('change', () => handleCheckboxChange(event.id, checkbox.checked));
+
+                const label = document.createElement('label');
+				label.addEventListener('click', () => copyToClipboard(event));
+                label.textContent = event.name;
+
+                const nextTimeSpan = document.createElement('span');
+                nextTimeSpan.className = 'next-time';
+
+                const countdown = document.createElement('span');
+                countdown.className = 'event-countdown';
+
+                eventDiv.appendChild(checkbox);
+                eventDiv.appendChild(label);
+                eventDiv.appendChild(nextTimeSpan);
+                eventDiv.appendChild(countdown);
+                eventsContainer.appendChild(eventDiv);
+
+                // 每秒检查一次事件状态
+                setInterval(() => updateEventStatus(event, eventDiv, nextTimeSpan, countdown), 1000);
+				
+				
+            });
+        }
+		
+        function copyToClipboard(event) {
+            const currentTime = new Date();
+            const currentHours = currentTime.getHours();
+            const currentMinutes = currentTime.getMinutes();
+
+            if (event.timeSpecificData) {
+                let nextTimeDiff = 24 * 60; // 初始化为一天的分钟数
+                let nextTimeData = "";
+
+                // 查找最接近的下一个事件时间
+                Object.entries(event.timeSpecificData).forEach(([time, data]) => {
+                    const [hours, minutes] = time.split(':').map(Number);
+                    let timeDiff = (hours * 60 + minutes) - (currentHours * 60 + currentMinutes);
+
+                    if (timeDiff < 0) timeDiff += 24 * 60; // 调整为正数
+                    if (timeDiff < nextTimeDiff) {
+                        nextTimeDiff = timeDiff;
+                        nextTimeData = data;
+                    }
+                });
+
+                // 复制下一个事件时间的特定数据
+                navigator.clipboard.writeText(nextTimeData).then(() => {
+                    console.log(nextTimeData);
+                }).catch(err => {
+                    console.error('复制失败:', err);
+                });
+            }else{
+                navigator.clipboard.writeText(event.clipboardData).then(() => {
+                    //alert("数据已复制到剪切板");
+                    console.log(event.clipboardData);
+                }).catch(err => {
+                    console.error('复制失败:', err);
+                });
+            }
+        }
+
+
+        // 处理复选框变更
+        function handleCheckboxChange(eventId, isChecked) {
+            const savedEvents = JSON.parse(localStorage.getItem('checkedEvents') || '[]');
+            const eventSet = new Set(savedEvents);
+			const eventDiv = document.getElementById(`event-${eventId}`);
+
+            if (isChecked) {
+                eventSet.add(eventId);
+				eventDiv.classList.add('checked');
+            } else {
+                eventSet.delete(eventId);
+				eventDiv.classList.remove('checked');
+            }
+
+            localStorage.setItem('checkedEvents', JSON.stringify(Array.from(eventSet)));
+        }
+
+        // 更新事件状态和倒计时
+        function updateEventStatus(event, eventDiv, nextTimeSpan, countdown) {
+            const currentTime = new Date();
+            const currentHours = currentTime.getHours();
+            const currentMinutes = currentTime.getMinutes();
+            const currentSeconds = currentTime.getSeconds();
+			// 获取复选框元素并检查是否勾选
+			const checkbox = document.getElementById(`checkbox-${event.id}`);
+			const isChecked = checkbox ? checkbox.checked : false;
+			
+            let nextTimeDiff = 24 * 60; // 初始化为一天的分钟数
+            let nextEventTime = '';
+
+			event.times.forEach(time => {
+				
+
+			
+				const [hours, minutes] = time.split(':').map(Number);
+				let timeDiff = (hours * 60 + minutes) - (currentHours * 60 + currentMinutes);
+
+				if (timeDiff < 0) timeDiff += 24 * 60; // 调整为正数
+				if (timeDiff < nextTimeDiff) {
+					nextTimeDiff = timeDiff;
+					nextEventTime = time;
+				}
+
+				// 根据时间差和勾选状态更新样式
+				let newClass = 'event-item';
+				if (timeDiff < 10) {
+					newClass += ' red';
+				} else if (timeDiff <= 20) {
+					newClass += ' orange';
+				}
+				if (isChecked) {
+					newClass += ' checked';
+				}
+				eventDiv.className = newClass;
+			});
+
+            // 更新下一次事件时间的显示
+            nextTimeSpan.textContent = ` 下次: ${nextEventTime} `;
+
+            // 更新倒计时
+            const countdownHours = Math.floor(nextTimeDiff / 60);
+            const countdownMinutes = nextTimeDiff % 60;
+            const countdownSeconds = 60 - currentSeconds;
+            countdown.textContent = ` 剩余 ${countdownHours.toString().padStart(2, '0')}:${countdownMinutes.toString().padStart(2, '0')}:${countdownSeconds.toString().padStart(2, '0')}`;
+        }
+
+        // 页面加载时初始化
+        document.addEventListener('DOMContentLoaded', initializeEvents);
+    </script>
+</body>
+</html>
